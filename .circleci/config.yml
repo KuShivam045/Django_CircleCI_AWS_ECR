@@ -2,34 +2,49 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: cimg/base:2024.06
-        auth:
-          username: ${DOCKER_USERNAME}
-          password: ${DOCKER_PASSWORD}
-    steps:
-        - checkout
-        - run:
-            name: Build_Image
-            command: |
-              TAG=0.1$CIRCLE_BUILD_NUM
-              docker build -t $DOCKERHUB_USERNAME/djangotask:$TAG .
-  deploy:
-    docker:
-    - image: cimg/base:2024.06
+      - image: cimg/python:3.11
     steps:
       - checkout
-      - run: 
-          name: Pushing the Image to Docker_Hub
+      - run:
+          name: Install Dependencies
           command: |
-              TAG=0.1$CIRCLE_BUILD_NUM
-              docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-              docker push $DOCKER_USERNAME/djangotask:$TAG
+            pip install --upgrade pip
+            pip install -r requirements.txt
+
+  build_docker_image:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true # enable Docker layer caching for faster builds
+      - run:
+          name: Install AWS CLI
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y awscli
+      - run:
+          name: Build and Push Docker Image to AWS ECR
+          command: |
+            TAG=0.1$CIRCLE_BUILD_NUM
+            AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+            ECR_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
+            IMAGE_URI="$ECR_URI/djangotask:$TAG"
+
+            # Authenticate Docker to AWS ECR
+            aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_URI
+
+            # Build the Docker image
+            docker build -t djangotask -t $IMAGE_URI .
+
+            # Push the Docker image to AWS ECR
+            docker push $IMAGE_URI
 
 workflows:
   build_and_deploy:
     jobs:
       - build
-      - deploy:
+      - build_docker_image:
           requires:
             - build
           filters:
