@@ -26,12 +26,12 @@ jobs:
       - run:
           name: Build and Push Docker Image to AWS ECR
           command: |
-            TAG=0.1$CIRCLE_BUILD_NUM
-            ECR_URI="$AWS_ECR_REGISTRY_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+            TAG=0.1.$CIRCLE_BUILD_NUM
+            ECR_URI="$AWS_ECR_REGISTRY_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
             IMAGE_URI="$ECR_URI/django_circleci:$TAG"
 
             # Authenticate Docker to AWS ECR
-            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URI
+            aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_URI
 
             # Build the Docker image
             docker build -t django_circleci -t $IMAGE_URI .
