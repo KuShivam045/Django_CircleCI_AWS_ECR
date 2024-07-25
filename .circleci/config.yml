@@ -27,15 +27,14 @@ jobs:
           name: Build and Push Docker Image to AWS ECR
           command: |
             TAG=0.1$CIRCLE_BUILD_NUM
-            AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
-            ECR_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
-            IMAGE_URI="$ECR_URI/djangotask:$TAG"
+            ECR_URI="$AWS_ECR_REGISTRY_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
+            IMAGE_URI="$ECR_URI/django_circleci:$TAG"
 
             # Authenticate Docker to AWS ECR
             aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_URI
 
             # Build the Docker image
-            docker build -t djangotask -t $IMAGE_URI .
+            docker build -t django_circleci -t $IMAGE_URI .
 
             # Push the Docker image to AWS ECR
             docker push $IMAGE_URI
